@@ -61,32 +61,35 @@ class DecoderBlock(nn.Module):
         super().__init__()
         # vvvvvvvvv
         # CODE HERE
-        self.conv1 = None
-        self.up_conv = None
-        self.conv2 = None
+        self.conv1 = conv_relu_bn(cin,cin)
+        self.up_conv = nn.Upsample(scale_factor=2,mode='bilinear')
+        self.conv2 = conv_relu_bn(cin,cin//2)
+        self.conv3 = conv_relu_bn(cin,cin//2)
         # ^^^^^^^^^
 
     def forward(self, x, f_encoder):
         # On passe à travers les premières couches convolutives et upsampling
         # # vvvvvvvvv
         # # CODE HERE
-         x = None
+         x = self.conv1(x)
+         x = self.up_conv(x)
+         x = self.conv2(x)
         # # ^^^^^^^^^
 
         # On concatène les features de l'encoder
         # x et f_encoder sont (B, C, H, W)
         # # vvvvvvvvv
         # # CODE HERE
-         x = None
+         x = torch.cat([x,f_encoder],dim=1)
         # # ^^^^^^^^^
 
         # On applique la dernière convolution
         # # vvvvvvvvv
         # # CODE HERE
-         out = None
+         out = self.conv3(x)
         # # ^^^^^^^^^
 
-        return out
+        return out 
 
 
 class Decoder(nn.Module):
@@ -160,8 +163,13 @@ def test_timm():
     f3 = model.layer3(f2)
     f4 = model.layer4(f3)
 
+    print("layer1: " + str(f1.shape))
+    print("layer2: " + str(f2.shape))
+    print("layer3: " + str(f3.shape))
+    print("layer4: " + str(f4.shape))
+
 
 
 if __name__ == "__main__":
-    # test_timm()
+    test_timm()
     test_unet()
