@@ -228,7 +228,12 @@ def plot_samples(dataset_dir):
     crop_size = 256
 
     # On ajoutera des augmentations ici
-    augmentation_transforms = []
+    augmentation_transforms = [
+        A.HorizontalFlip(p=0.6),
+        A.RandomBrightnessContrast(p=0.2),
+        A.CoarseDropout(num_holes_range=(3, 6),hole_height_range=(10, 20),hole_width_range=(10, 30),fill_value=0, p=0.8),
+        
+    ]
     resize_transforms = [
         A.SmallestMaxSize(max_size=crop_size),
         A.RandomCrop(height=crop_size, width=crop_size),
