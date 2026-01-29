@@ -1,6 +1,0 @@
-click==8.1.7
-deepcs==0.2.9
-matplotlib
-tensorboard
-albumentations
-timm
