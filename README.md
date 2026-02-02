@@ -16,7 +16,7 @@ Application Django/GeoDjango de signalement de dépôts sauvages avec géolocali
 - [QGIS](https://qgis.org/) ou [OSGeo4W](https://trac.osgeo.org/osgeo4w/) (Windows) pour les bibliothèques GDAL/GEOS
 
 
-![Map QGIS](Dump-Alert/images_readme/beauvais.png)
+![Map QGIS](images_readme/beauvais.png)
 
 ## Installation (Windows)
 
