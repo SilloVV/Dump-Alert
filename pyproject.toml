@@ -1,0 +1,18 @@
+[project]
+name = "dump-alert"
+version = "0.1.0"
+description = "Application de signalement de dépôts sauvages avec géolocalisation et heatmap"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "django>=5.2.10",
+    "django-leaflet>=0.33.0",
+    "pillow>=12.1.0",
+    "psycopg2-binary>=2.9.11",
+]
+
+[project.optional-dependencies]
+# Pour production avec PostgreSQL/PostGIS
+postgres = [
+    "psycopg2-binary>=2.9.9",
+]
