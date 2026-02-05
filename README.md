@@ -17,6 +17,9 @@ Application Django/GeoDjango de signalement de dépôts sauvages avec géolocali
 
 
 ![Map QGIS](images_readme/beauvais.png)
+![Page de singalement ](images_readme/liste_signalement.png)
+![Page admin django](images_readme/admin_django.png)
+
 
 ## Installation (Windows)
 

@@ -1,0 +1,268 @@
+{% load l10n %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signalements - Dump Alert</title>
+    <style>
+        /* TODO(human): Personnaliser le style du tableau selon vos préférences */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        /* Filtres */
+        .filters {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filters label {
+            font-weight: 500;
+            color: #555;
+        }
+
+        .filters select {
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .filters button {
+            padding: 8px 16px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .filters button:hover {
+            background: #0056b3;
+        }
+
+        .filters a {
+            color: #666;
+            text-decoration: none;
+        }
+
+        /* Tableau */
+        table {
+            width: 100%;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        th, td {
+            padding: 12px 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #333;
+            color: white;
+            font-weight: 500;
+        }
+
+        tr:hover {
+            background: #f8f9fa;
+        }
+
+        /* Badges de statut */
+        .badge {
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .badge-validated {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .badge-rejected {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        /* Badges de danger */
+        .danger-green { color: #28a745; }
+        .danger-household { color: #6c757d; }
+        .danger-bulky { color: #fd7e14; }
+        .danger-chemical { color: #dc3545; }
+        .danger-asbestos { color: #721c24; font-weight: bold; }
+
+        /* Image miniature */
+        .thumbnail {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+
+        /* Lien vers admin */
+        .admin-link {
+            display: inline-block;
+            margin-bottom: 20px;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .admin-link:hover {
+            text-decoration: underline;
+        }
+
+        /* Stats */
+        .stats {
+            margin-bottom: 15px;
+            color: #666;
+        }
+
+        /* Localisation */
+        .location a {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 12px;
+            font-family: monospace;
+        }
+
+        .location a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="{% url 'admin:index' %}" class="admin-link">&larr; Retour à l'admin</a>
+
+        <h1>Liste des Signalements</h1>
+
+        <!-- Filtres -->
+        <form method="get" class="filters">
+            <label for="status">Statut :</label>
+            <select name="status" id="status">
+                <option value="">Tous</option>
+                {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if current_status == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <label for="danger">Danger :</label>
+            <select name="danger" id="danger">
+                <option value="">Tous</option>
+                {% for value, label in danger_choices %}
+                    <option value="{{ value }}" {% if current_danger == value %}selected{% endif %}>
+                        {{ label }}
+                    </option>
+                {% endfor %}
+            </select>
+
+            <button type="submit">Filtrer</button>
+            <a href="{% url 'reports:list' %}">Réinitialiser</a>
+        </form>
+
+        <!-- Stats -->
+        <p class="stats">{{ reports|length }} signalement(s) trouvé(s)</p>
+
+        <!-- Tableau -->
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Photo</th>
+                    <th>Description</th>
+                    <th>Localisation</th>
+                    <th>Danger</th>
+                    <th>Statut</th>
+                    <th>Date</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for report in reports %}
+                <tr>
+                    <td>#{{ report.id }}</td>
+                    <td>
+                        {% if report.image %}
+                            <img src="{{ report.image.url }}" alt="Photo" class="thumbnail">
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td>{{ report.description|truncatechars:50 }}</td>
+                    <td class="location">
+                        {% if report.location %}
+                            {# location.x = longitude, location.y = latitude #}
+                            {# Google Maps attend: latitude,longitude avec POINTS décimaux #}
+                            <a href="https://www.google.com/maps?q={% localize off %}{{ report.location.y }},{{ report.location.x }}{% endlocalize %}"
+                               target="_blank"
+                               title="Voir sur Google Maps">
+                                📍 {% localize off %}{{ report.location.y|floatformat:5 }}°N, {{ report.location.x|floatformat:5 }}°E{% endlocalize %}
+                            </a>
+                        {% else %}
+                            -
+                        {% endif %}
+                    </td>
+                    <td class="danger-{{ report.danger_level }}">
+                        {{ report.get_danger_level_display }}
+                    </td>
+                    <td>
+                        <span class="badge badge-{{ report.status }}">
+                            {{ report.get_status_display }}
+                        </span>
+                    </td>
+                    <td>{{ report.created_at|date:"d/m/Y H:i" }}</td>
+                    <td>
+                        <a href="{% url 'admin:reports_report_change' report.id %}">
+                            Modifier
+                        </a>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 40px; color: #666;">
+                        Aucun signalement trouvé.
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>

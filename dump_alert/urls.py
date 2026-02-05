@@ -11,7 +11,7 @@ Structure :
 """
 
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
@@ -21,6 +21,10 @@ urlpatterns = [
     # Interface d'administration Django
     # Accessible à : http://localhost:8000/admin/
     path('admin/', admin.site.urls),
+
+    # Vues de l'application reports
+    # Accessible à : http://localhost:8000/reports/
+    path('reports/', include('reports.urls')),
 ]
 
 # En mode DEBUG : servir les fichiers médias (images uploadées)
