@@ -1,4 +1,5 @@
 # Dump Alert
+![Faire un signalement](images_readme/signalement.png)
 
 Application Django/GeoDjango de signalement de dépôts sauvages avec géolocalisation et clustering automatique.
 
@@ -112,6 +113,6 @@ Couches disponibles : `reports_report`, `reports_reportcluster`
 Django 5.2 • GeoDjango • PostGIS 16 • django-leaflet • leaflet-control-geocoder • Pillow • QGIS 3.40
 
 ![Map QGIS](images_readme/beauvais.png)
-![Faire un signalement](images_readme/signalement.png)
+
 ![Page de signalements](images_readme/liste_signalement.png)
 ![Page admin django](images_readme/admin_django.png)
