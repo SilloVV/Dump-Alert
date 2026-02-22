@@ -12,6 +12,8 @@ Ce fichier centralise TOUS les paramètres de l'application :
 import os
 from pathlib import Path
 
+from decouple import config
+
 # =============================================================================
 # CHEMINS
 # =============================================================================
@@ -35,11 +37,11 @@ GEOS_LIBRARY_PATH = os.path.join(QGIS_PATH, "bin", "geos_c.dll")
 # =============================================================================
 # Clé secrète pour le chiffrement (sessions, CSRF, etc.)
 # /!\ En production : utiliser une variable d'environnement !
-SECRET_KEY = "django-insecure-%-1jkiqf%d^o7z#zk3xq#)cma5$1^f6#hvfi*sdy2g4o^=p86h"
+SECRET_KEY = config("DJANGO_TOKEN")
 
 # Mode debug : affiche les erreurs détaillées
 # /!\ Mettre à False en production !
-DEBUG = True
+DEBUG = config("DEBUG", default=True, cast=bool)
 
 # Domaines autorisés à accéder à l'application
 # Ex: ['monsite.com', 'www.monsite.com']
@@ -115,11 +117,11 @@ WSGI_APPLICATION = "dump_alert.wsgi.application"
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
-        "NAME": "dump_alert",
-        "USER": "postgres",
-        "PASSWORD": "postgres",
-        "HOST": "127.0.0.1",
-        "PORT": "5433",
+        "NAME": config("POSTGRES_DB", default="dump_alert"),
+        "USER": config("POSTGRES_USER", default="postgres"),
+        "PASSWORD": config("DATABASE_PASSWORD"),
+        "HOST": config("POSTGRES_HOST", default="127.0.0.1"),
+        "PORT": config("POSTGRES_PORT", default="5433"),
     }
 }
 
