@@ -2,7 +2,6 @@
 Tests unitaires pour l'application Reports.
 
 Couverture :
-- WASTE_TYPE_SEVERITY : ordre de priorité des catégories
 - ReportCluster : méthodes recalculate_*
 - services.merge_clusters : fusion de clusters
 - services.assign_report_to_cluster : 0 / 1 / 2+ clusters proches
@@ -19,7 +18,7 @@ from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from .models import Report, ReportCluster, WASTE_TYPE_SEVERITY
+from .models import Report, ReportCluster
 
 
 # =============================================================================
@@ -58,31 +57,6 @@ def make_report(lat=49.430, lon=2.082, waste_type="household"):
 
 
 # =============================================================================
-# MODÈLE : WASTE_TYPE_SEVERITY
-# =============================================================================
-
-
-class WasteTypeSeverityTest(TestCase):
-    """L'ordre de priorité doit refléter la dangerosité réelle."""
-
-    def test_asbestos_is_most_severe(self):
-        self.assertEqual(
-            max(WASTE_TYPE_SEVERITY, key=WASTE_TYPE_SEVERITY.get), "asbestos"
-        )
-
-    def test_green_is_least_severe(self):
-        self.assertEqual(min(WASTE_TYPE_SEVERITY, key=WASTE_TYPE_SEVERITY.get), "green")
-
-    def test_all_waste_types_have_severity(self):
-        for value, _ in Report.WasteType.choices:
-            self.assertIn(
-                value,
-                WASTE_TYPE_SEVERITY,
-                msg=f"'{value}' absent de WASTE_TYPE_SEVERITY",
-            )
-
-
-# =============================================================================
 # MODÈLE : ReportCluster
 # =============================================================================
 
@@ -94,10 +68,10 @@ class ReportClusterMethodsTest(TestCase):
         self.cluster = ReportCluster.objects.create(
             centroid=Point(2.082, 49.430, srid=4326),
             report_count=0,
-            max_waste_type="green",
+            waste_type="household",
         )
         r1 = make_report(lat=49.430, lon=2.082, waste_type="household")
-        r2 = make_report(lat=49.431, lon=2.083, waste_type="asbestos")
+        r2 = make_report(lat=49.431, lon=2.083, waste_type="household")
         # Forcer l'appartenance au cluster de test (ignore le signal auto)
         Report.objects.filter(pk__in=[r1.pk, r2.pk]).update(cluster=self.cluster)
 
@@ -106,10 +80,9 @@ class ReportClusterMethodsTest(TestCase):
         self.assertAlmostEqual(self.cluster.centroid.x, (2.082 + 2.083) / 2, places=5)
         self.assertAlmostEqual(self.cluster.centroid.y, (49.430 + 49.431) / 2, places=5)
 
-    def test_max_waste_type_highest_severity_wins(self):
-        self.cluster.recalculate_max_waste_type()
-        # asbestos (6) > household (2) → asbestos doit gagner
-        self.assertEqual(self.cluster.max_waste_type, "asbestos")
+    def test_waste_type_matches_reports(self):
+        self.cluster.recalculate_waste_type()
+        self.assertEqual(self.cluster.waste_type, "household")
 
     def test_recalculate_updates_report_count(self):
         self.cluster.recalculate()
@@ -133,15 +106,15 @@ class MergeClustersTest(TestCase):
         self.c1 = ReportCluster.objects.create(
             centroid=Point(2.082, 49.430, srid=4326),
             report_count=1,
-            max_waste_type="household",
+            waste_type="household",
         )
         self.c2 = ReportCluster.objects.create(
             centroid=Point(2.082, 49.430, srid=4326),
             report_count=1,
-            max_waste_type="chemical",
+            waste_type="household",
         )
         r1 = make_report(waste_type="household")
-        r2 = make_report(waste_type="chemical")
+        r2 = make_report(waste_type="household")
         Report.objects.filter(pk=r1.pk).update(cluster=self.c1)
         Report.objects.filter(pk=r2.pk).update(cluster=self.c2)
 

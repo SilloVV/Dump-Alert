@@ -46,7 +46,8 @@ def assign_report_to_cluster(report):
         # 1. Verrouiller les clusters proches (≤10m) pour éviter les race conditions
         nearby = list(
             ReportCluster.objects.select_for_update().filter(
-                centroid__dwithin=(report.location, D(m=10))
+                centroid__dwithin=(report.location, D(m=10)),
+                waste_type=report.type,
             )
         )
 
@@ -55,7 +56,7 @@ def assign_report_to_cluster(report):
             cluster = ReportCluster.objects.create(
                 centroid=report.location,
                 report_count=1,
-                max_waste_type=report.type,
+                waste_type=report.type,
             )
 
         elif len(nearby) == 1:

@@ -14,6 +14,7 @@ from django.shortcuts import render, redirect
 from django.contrib.admin.views.decorators import staff_member_required
 from django.contrib.auth.decorators import login_required
 from django.contrib.gis.geos import Point
+from django.views.decorators.http import require_safe, require_http_methods
 
 from .models import Report
 from .forms import ReportForm
@@ -72,6 +73,7 @@ def report_list(request):
     return render(request, "reports/report_list.html", context)
 
 
+@require_http_methods(["GET", "POST"])
 @login_required  # Accessible uniquement aux utilisateurs connectés
 def create_report(request):
     """
@@ -105,6 +107,7 @@ def create_report(request):
     return render(request, "reports/report_form.html", {"form": form, "error": error})
 
 
+@require_safe
 def report_success(request):
     """Page de confirmation après soumission d'un signalement. URL : /merci/"""
     return render(request, "reports/report_success.html")

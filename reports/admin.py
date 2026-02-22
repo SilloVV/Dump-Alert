@@ -67,9 +67,9 @@ def recalculer_clusters(modeladmin, request, queryset):
 class ReportClusterAdmin(LeafletGeoAdmin):
     """Admin des clusters avec carte du centroïde."""
 
-    list_display = ["id", "report_count", "max_waste_type", "created_at", "updated_at"]
-    list_filter = ["max_waste_type"]
-    readonly_fields = ["report_count", "max_waste_type", "created_at", "updated_at"]
+    list_display = ["id", "report_count", "waste_type", "created_at", "updated_at"]
+    list_filter = ["waste_type"]
+    readonly_fields = ["report_count", "waste_type", "created_at", "updated_at"]
     inlines = [ReportInline]
     actions = [recalculer_clusters]
 
