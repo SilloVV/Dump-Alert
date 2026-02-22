@@ -18,6 +18,26 @@ from django.contrib.gis.geos import Point
 from .models import Report
 from .forms import ReportForm
 
+# Limites géographiques de la zone de Beauvais
+_LAT_MIN, _LAT_MAX = 49.35, 49.55
+_LON_MIN, _LON_MAX = 1.80, 2.30
+
+
+def _parse_coords(lat_str, lon_str):
+    """
+    Valide et convertit les coordonnées brutes du formulaire.
+    Retourne (lat_f, lon_f) ou lève ValueError avec un message lisible.
+    """
+    if not lat_str or not lon_str:
+        raise ValueError("Veuillez choisir une localisation sur la carte")
+    try:
+        lat_f, lon_f = float(lat_str), float(lon_str)
+    except ValueError:
+        raise ValueError("Erreur de coordonnées : réessayez")
+    if not (_LAT_MIN <= lat_f <= _LAT_MAX and _LON_MIN <= lon_f <= _LON_MAX):
+        raise ValueError("Position hors zone de Beauvais")
+    return lat_f, lon_f
+
 
 @staff_member_required  # Accessible uniquement aux utilisateurs staff (admin et certaines permissions)
 def report_list(request):
@@ -69,26 +89,18 @@ def create_report(request):
     if request.method == "POST":
         form = ReportForm(request.POST, request.FILES)
         if form.is_valid():
-            lat = request.POST.get("lat", "").strip()
-            lon = request.POST.get("lon", "").strip()
-
-            if not lat or not lon:
-                error = "Veuillez choisir une localisation sur la carte"
+            try:
+                lat_f, lon_f = _parse_coords(
+                    request.POST.get("lat", "").strip(),
+                    request.POST.get("lon", "").strip(),
+                )
+            except ValueError as e:
+                error = str(e)
             else:
-                # Isoler la conversion float : source possible de ValueError
-                try:
-                    lat_f = float(lat)
-                    lon_f = float(lon)
-                except ValueError:
-                    error = "Erreur de coordonnées : réessayez"
-                else:
-                    if 49.35 <= lat_f <= 49.55 and 1.80 <= lon_f <= 2.30:
-                        report = form.save(commit=False)
-                        report.location = Point(lon_f, lat_f, srid=4326)
-                        report.save()  # déclenche le clustering via signals.py
-                        return redirect("reports:success")
-                    else:
-                        error = "Position hors zone de Beauvais"
+                report = form.save(commit=False)
+                report.location = Point(lon_f, lat_f, srid=4326)
+                report.save()  # déclenche le clustering via signals.py
+                return redirect("reports:success")
 
     return render(request, "reports/report_form.html", {"form": form, "error": error})
 

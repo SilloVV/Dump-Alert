@@ -4,14 +4,14 @@
  */
 
 // URL du plugin Leaflet Control Geocoder (CDN)
-var GEOCODER_CSS = 'https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css';
-var GEOCODER_JS = 'https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js';
+const GEOCODER_CSS = 'https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.css';
+const GEOCODER_JS = 'https://unpkg.com/leaflet-control-geocoder@2.4.0/dist/Control.Geocoder.js';
 
 /**
  * Charge dynamiquement un fichier CSS
  */
 function loadCSS(url) {
-    var link = document.createElement('link');
+    const link = document.createElement('link');
     link.rel = 'stylesheet';
     link.href = url;
     document.head.appendChild(link);
@@ -22,7 +22,7 @@ function loadCSS(url) {
  */
 function loadJS(url) {
     return new Promise(function(resolve, reject) {
-        var script = document.createElement('script');
+        const script = document.createElement('script');
         script.src = url;
         script.onload = resolve;
         script.onerror = reject;
@@ -34,7 +34,7 @@ function loadJS(url) {
  * Initialise le geocoder sur la carte
  */
 function initGeocoder(map) {
-    var geocoder = L.Control.geocoder({
+    const geocoder = L.Control.geocoder({
         defaultMarkGeocode: false,
         placeholder: 'Rechercher une adresse...',
         errorMessage: 'Adresse non trouvée',
@@ -50,7 +50,7 @@ function initGeocoder(map) {
 
     // Quand une adresse est sélectionnée, centrer la carte
     geocoder.on('markgeocode', function(e) {
-        var center = e.geocode.center;
+        const center = e.geocode.center;
         map.setView(center, 17);
     });
 
@@ -61,7 +61,7 @@ function initGeocoder(map) {
 
 // Écouter l'événement django-leaflet quand une carte est initialisée
 window.addEventListener('map:init', function(event) {
-    var map = event.detail.map;
+    const map = event.detail.map;
 
     // Charger le CSS
     loadCSS(GEOCODER_CSS);
