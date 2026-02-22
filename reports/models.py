@@ -24,17 +24,6 @@ Exemple d'utilisation :
 from django.contrib.gis.db import models  # Modèles GeoDjango (avec champs spatiaux)
 
 
-# Ordre de priorité des catégories (pour déterminer la catégorie dominante d'un cluster)
-WASTE_TYPE_SEVERITY = {
-    "green": 1,
-    "household": 2,
-    "bulky": 3,
-    "building": 4,
-    "chemical": 5,
-    "asbestos": 6,
-}
-
-
 class ReportCluster(models.Model):
     """
     Regroupement automatique de signalements proches (≤10m).
@@ -54,7 +43,7 @@ class ReportCluster(models.Model):
         default=0, verbose_name="Nombre de signalements"
     )
 
-    max_waste_type = models.CharField(
+    waste_type = models.CharField(
         max_length=20,
         choices=[
             ("green", "Déchets verts"),
@@ -65,7 +54,7 @@ class ReportCluster(models.Model):
             ("asbestos", "Amiante"),
         ],
         default="green",
-        verbose_name="Catégorie dominante",
+        verbose_name="Catégorie de déchets",
     )
 
     created_at = models.DateTimeField(
@@ -96,21 +85,16 @@ class ReportCluster(models.Model):
             avg_lat = sum(p.y for p in points) / len(points)
             self.centroid = Point(avg_lon, avg_lat, srid=4326)
 
-    def recalculate_max_waste_type(self):
-        """Détermine la catégorie de déchets dominante parmi les signalements."""
-        types = self.reports.values_list("type", flat=True)
-        if types:
-            self.max_waste_type = max(
-                types, key=lambda w: WASTE_TYPE_SEVERITY.get(w, 0)
-            )
-        else:
-            self.max_waste_type = "green"
+    def recalculate_waste_type(self):
+        """Lit la catégorie de déchets depuis les signalements du cluster (tous identiques)."""
+        first_type = self.reports.values_list("type", flat=True).first()
+        self.waste_type = first_type if first_type else "green"
 
     def recalculate(self):
         """Recalcule toutes les métadonnées du cluster."""
         self.report_count = self.reports.count()
         self.recalculate_centroid()
-        self.recalculate_max_waste_type()
+        self.recalculate_waste_type()
         self.save()
 
 
