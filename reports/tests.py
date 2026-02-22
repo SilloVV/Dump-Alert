@@ -145,20 +145,6 @@ class MergeClustersTest(TestCase):
         Report.objects.filter(pk=r1.pk).update(cluster=self.c1)
         Report.objects.filter(pk=r2.pk).update(cluster=self.c2)
 
-        # TODO(human) — Implémente les 3 méthodes de test ci-dessous.
-        #
-        # Chaque méthode doit appeler merge_clusters([self.c2, self.c1])
-        # puis vérifier un aspect précis du résultat :
-        #
-        # 1. test_oldest_cluster_is_kept(self)
-        #    → vérifie que le cluster retourné est self.c1 (le plus ancien)
-        #
-        # 2. test_all_reports_reassigned_to_main(self)
-        #    → vérifie que les 2 reports pointent vers le cluster retourné
-        #
-        # 3. test_secondary_clusters_deleted(self)
-        #    → vérifie qu'il ne reste qu'1 cluster en base après fusion
-
 
 # =============================================================================
 # SERVICE : assign_report_to_cluster (via signal post_save)
