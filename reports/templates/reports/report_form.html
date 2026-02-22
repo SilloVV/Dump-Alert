@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Signaler un dépôt sauvage — Dump Alert Beauvais</title>
+
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- Geocoder (recherche d'adresse) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: system-ui, sans-serif;
+      background: #f5f5f5;
+      color: #1a1a1a;
+    }
+
+    header {
+      background: #2d6a4f;
+      color: white;
+      padding: 1rem 1.5rem;
+    }
+    header h1 { font-size: 1.25rem; font-weight: 600; }
+    header p  { font-size: 0.85rem; opacity: 0.85; margin-top: 0.2rem; }
+
+    .container {
+      max-width: 900px;
+      margin: 2rem auto;
+      padding: 0 1rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 640px) {
+      .container { grid-template-columns: 1fr; }
+    }
+
+    /* ── Carte ── */
+    .map-section h2 { font-size: 1rem; margin-bottom: 0.5rem; }
+    .map-hint {
+      font-size: 0.8rem;
+      color: #555;
+      margin-bottom: 0.5rem;
+    }
+    #map {
+      height: 420px;
+      border-radius: 8px;
+      border: 2px solid #ccc;
+      cursor: crosshair;
+    }
+    #map.located { border-color: #2d6a4f; }
+    #coords-display {
+      margin-top: 0.4rem;
+      font-size: 0.78rem;
+      color: #2d6a4f;
+      min-height: 1.2em;
+    }
+
+    /* ── Formulaire ── */
+    .form-section {
+      background: white;
+      border-radius: 8px;
+      padding: 1.5rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .form-section h2 { font-size: 1rem; margin-bottom: 1rem; }
+
+    .field { margin-bottom: 1.1rem; }
+    .field label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 500;
+      margin-bottom: 0.3rem;
+    }
+    .field input,
+    .field select,
+    .field textarea {
+      width: 100%;
+      padding: 0.5rem 0.7rem;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      font-family: inherit;
+    }
+    .field textarea { resize: vertical; }
+
+    .error-banner {
+      background: #fee2e2;
+      color: #991b1b;
+      border: 1px solid #fca5a5;
+      border-radius: 6px;
+      padding: 0.6rem 0.9rem;
+      font-size: 0.85rem;
+      margin-bottom: 1rem;
+    }
+
+    .btn-submit {
+      width: 100%;
+      padding: 0.7rem;
+      background: #2d6a4f;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .btn-submit:hover { background: #1b4332; }
+    .btn-submit:disabled { background: #aaa; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>Signaler un dépôt sauvage</h1>
+  <p>Beauvais — Votre signalement sera examiné par nos équipes.</p>
+</header>
+
+<div class="container">
+
+  <!-- ── CARTE ── -->
+  <div class="map-section">
+    <h2>1. Localiser le dépôt</h2>
+    <p class="map-hint">Cliquez sur la carte pour placer le marqueur à l'emplacement exact.</p>
+    <div id="map"></div>
+    <div id="coords-display"></div>
+  </div>
+
+  <!-- ── FORMULAIRE ── -->
+  <div class="form-section">
+    <h2>2. Décrire le dépôt</h2>
+
+    {% if error %}
+      <div class="error-banner">{{ error }}</div>
+    {% endif %}
+
+    <form method="post" enctype="multipart/form-data" id="report-form">
+      {% csrf_token %}
+
+      <!-- Champs cachés — remplis par le clic sur la carte -->
+      <input type="hidden" name="lat" id="lat-input">
+      <input type="hidden" name="lon" id="lon-input">
+
+      {% for field in form %}
+        <div class="field">
+          <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+          {{ field }}
+          {% if field.errors %}
+            <div class="error-banner">{{ field.errors|join:", " }}</div>
+          {% endif %}
+        </div>
+      {% endfor %}
+
+      <button type="submit" class="btn-submit" id="submit-btn" disabled>
+        Envoyer le signalement
+      </button>
+    </form>
+  </div>
+
+</div>
+
+<!-- Leaflet JS -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<!-- Geocoder (recherche d'adresse via Nominatim/OSM) -->
+<script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+<script>
+  // ── Initialisation de la carte centrée sur Beauvais ──
+  var BEAUVAIS = [49.43060, 2.08186];
+  var BOUNDS   = [[49.37, 1.90], [49.47, 2.20]];
+
+  var map = L.map('map', {
+    center: BEAUVAIS,
+    zoom: 13,
+    minZoom: 12,
+    maxZoom: 18,
+    maxBounds: BOUNDS,
+    maxBoundsViscosity: 1.0   // Empêche de sortir des bounds
+  });
+
+  // Tuiles CartoDB Positron — gratuites, sans clé API requise -> Raster
+  L.tileLayer(
+    'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> ' +
+                   '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }
+  ).addTo(map);
+
+  // ── Geocoder (barre de recherche d'adresse, restreint à Beauvais) ──
+  var beauvaisParams = {
+    viewbox: '1.80,49.55,2.30,49.35',  // minLon,maxLat,maxLon,minLat
+    bounded: 1,                          // résultats strictement dans la zone
+    countrycodes: 'fr'
+  };
+  var geocoder = L.Control.Geocoder.nominatim({
+    geocodingQueryParams: beauvaisParams,
+    suggestQueryParams: beauvaisParams    // même restriction pour les suggestions
+  });
+  L.Control.geocoder({
+    geocoder: geocoder,
+    defaultMarkGeocode: false,
+    placeholder: 'Rechercher une adresse à Beauvais...',
+    errorMessage: 'Adresse introuvable dans la zone de Beauvais.',
+    suggestMinLength: 5,    // propositions dès 3 caractères tapés
+    suggestTimeout: 300     // délai avant requête Nominatim (ms)
+  })
+  .on('markgeocode', function(e) {
+    var latlng = e.geocode.center;
+    // Vérifier que le résultat est dans la zone de Beauvais
+    if (latlng.lat >= 49.35 && latlng.lat <= 49.55 &&
+        latlng.lng >= 1.80  && latlng.lng <= 2.30) {
+      map.setView(latlng, 17);
+      placeMarker(latlng);
+    } else {
+      alert('Cette adresse est hors de la zone de Beauvais.');
+    }
+  })
+  .addTo(map);
+
+  // ── Gestion du marqueur au clic ──
+  var marker = null;
+
+  function placeMarker(latlng) {
+    var lat = latlng.lat.toFixed(6);
+    var lon = latlng.lng.toFixed(6);
+
+    document.getElementById('lat-input').value = lat;
+    document.getElementById('lon-input').value = lon;
+    document.getElementById('coords-display').textContent =
+      'Position sélectionnée : ' + lat + ', ' + lon;
+
+    if (marker) {
+      marker.setLatLng(latlng);
+    } else {
+      marker = L.marker(latlng, { draggable: true }).addTo(map);
+      marker.on('dragend', function(ev) {
+        var pos = ev.target.getLatLng();
+        document.getElementById('lat-input').value = pos.lat.toFixed(6);
+        document.getElementById('lon-input').value = pos.lng.toFixed(6);
+        document.getElementById('coords-display').textContent =
+          'Position sélectionnée : ' + pos.lat.toFixed(6) + ', ' + pos.lng.toFixed(6);
+      });
+    }
+
+    document.getElementById('map').classList.add('located');
+    document.getElementById('submit-btn').disabled = false;
+  }
+
+  map.on('click', function(e) {
+    placeMarker(e.latlng);
+  });
+</script>
+
+</body>
+</html>

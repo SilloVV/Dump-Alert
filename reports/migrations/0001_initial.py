@@ -5,29 +5,91 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
-    dependencies = [
-    ]
+    dependencies = []
 
     operations = [
         migrations.CreateModel(
-            name='Report',
+            name="Report",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('image', models.ImageField(help_text='Photo du dépôt sauvage', upload_to='reports/', verbose_name='Photo')),
-                ('description', models.TextField(help_text='Décrivez le dépôt (type de déchets, quantité estimée...)', verbose_name='Description')),
-                ('danger_level', models.CharField(choices=[('green', 'Déchets verts'), ('household', 'Déchets ménagers'), ('bulky', 'Encombrants'), ('chemical', 'Déchets chimiques'), ('asbestos', 'Amiante')], help_text='Type de déchets et danger associé', max_length=20, verbose_name='Niveau de dangerosité')),
-                ('location', django.contrib.gis.db.models.fields.PointField(help_text='Position GPS du dépôt', srid=4326, verbose_name='Localisation')),
-                ('status', models.CharField(choices=[('pending', 'En attente'), ('validated', 'Validé'), ('rejected', 'Rejeté')], default='pending', max_length=20, verbose_name='Statut')),
-                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='Date de création')),
-                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='Dernière modification')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "image",
+                    models.ImageField(
+                        help_text="Photo du dépôt sauvage",
+                        upload_to="reports/",
+                        verbose_name="Photo",
+                    ),
+                ),
+                (
+                    "description",
+                    models.TextField(
+                        help_text="Décrivez le dépôt (type de déchets, quantité estimée...)",
+                        verbose_name="Description",
+                    ),
+                ),
+                (
+                    "type",
+                    models.CharField(
+                        choices=[
+                            ("green", "Déchets verts"),
+                            ("household", "Déchets ménagers"),
+                            ("bulky", "Encombrants"),
+                            ("chemical", "Déchets chimiques"),
+                            ("asbestos", "Amiante"),
+                        ],
+                        help_text="Type de déchets et danger associé",
+                        max_length=20,
+                        verbose_name="Niveau de dangerosité",
+                    ),
+                ),
+                (
+                    "location",
+                    django.contrib.gis.db.models.fields.PointField(
+                        help_text="Position GPS du dépôt",
+                        srid=4326,
+                        verbose_name="Localisation",
+                    ),
+                ),
+                (
+                    "status",
+                    models.CharField(
+                        choices=[
+                            ("pending", "En attente"),
+                            ("validated", "Validé"),
+                            ("rejected", "Rejeté"),
+                        ],
+                        default="pending",
+                        max_length=20,
+                        verbose_name="Statut",
+                    ),
+                ),
+                (
+                    "created_at",
+                    models.DateTimeField(
+                        auto_now_add=True, verbose_name="Date de création"
+                    ),
+                ),
+                (
+                    "updated_at",
+                    models.DateTimeField(
+                        auto_now=True, verbose_name="Dernière modification"
+                    ),
+                ),
             ],
             options={
-                'verbose_name': 'Signalement',
-                'verbose_name_plural': 'Signalements',
-                'ordering': ['-created_at'],
+                "verbose_name": "Signalement",
+                "verbose_name_plural": "Signalements",
+                "ordering": ["-created_at"],
             },
         ),
     ]

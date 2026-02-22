@@ -8,6 +8,7 @@ dependencies = [
     "django>=5.2.10",
     "django-leaflet>=0.33.0",
     "pillow>=12.1.0",
+    "pre-commit>=4.5.1",
     "psycopg2-binary>=2.9.11",
 ]
 

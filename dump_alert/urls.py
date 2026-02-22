@@ -20,11 +20,13 @@ from django.conf.urls.static import static
 urlpatterns = [
     # Interface d'administration Django
     # Accessible à : http://localhost:8000/admin/
-    path('admin/', admin.site.urls),
-
+    path("admin/", admin.site.urls),
+    # Authentification (login, logout, etc.)
+    # Accessible à : http://localhost:8000/accounts/login/
+    path("accounts/", include("django.contrib.auth.urls")),
     # Vues de l'application reports
     # Accessible à : http://localhost:8000/reports/
-    path('reports/', include('reports.urls')),
+    path("reports/", include("reports.urls")),
 ]
 
 # En mode DEBUG : servir les fichiers médias (images uploadées)

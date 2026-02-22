@@ -6,7 +6,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Signalements - Dump Alert</title>
     <style>
-        /* TODO(human): Personnaliser le style du tableau selon vos préférences */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -119,12 +118,13 @@
             color: #721c24;
         }
 
-        /* Badges de danger */
-        .danger-green { color: #28a745; }
-        .danger-household { color: #6c757d; }
-        .danger-bulky { color: #fd7e14; }
-        .danger-chemical { color: #dc3545; }
-        .danger-asbestos { color: #721c24; font-weight: bold; }
+        /* Badges de catégorie de déchets */
+        .waste-green     { color: #28a745; }
+        .waste-household { color: #6c757d; }
+        .waste-bulky     { color: #fd7e14; }
+        .waste-building  { color: #8B5E3C; }
+        .waste-chemical  { color: #dc3545; }
+        .waste-asbestos  { color: #721c24; font-weight: bold; }
 
         /* Image miniature */
         .thumbnail {
@@ -183,11 +183,11 @@
                 {% endfor %}
             </select>
 
-            <label for="danger">Danger :</label>
-            <select name="danger" id="danger">
-                <option value="">Tous</option>
-                {% for value, label in danger_choices %}
-                    <option value="{{ value }}" {% if current_danger == value %}selected{% endif %}>
+            <label for="waste_type">Catégorie :</label>
+            <select name="waste_type" id="waste_type">
+                <option value="">Toutes</option>
+                {% for value, label in waste_choices %}
+                    <option value="{{ value }}" {% if current_waste == value %}selected{% endif %}>
                         {{ label }}
                     </option>
                 {% endfor %}
@@ -208,7 +208,7 @@
                     <th>Photo</th>
                     <th>Description</th>
                     <th>Localisation</th>
-                    <th>Danger</th>
+                    <th>Type</th>
                     <th>Statut</th>
                     <th>Date</th>
                     <th>Actions</th>
@@ -239,8 +239,8 @@
                             -
                         {% endif %}
                     </td>
-                    <td class="danger-{{ report.danger_level }}">
-                        {{ report.get_danger_level_display }}
+                    <td class="waste-{{ report.waste_type }}">
+                        {{ report.get_waste_type_display }}
                     </td>
                     <td>
                         <span class="badge badge-{{ report.status }}">

@@ -24,6 +24,96 @@ Exemple d'utilisation :
 from django.contrib.gis.db import models  # Modèles GeoDjango (avec champs spatiaux)
 
 
+# Ordre de priorité des catégories (pour déterminer la catégorie dominante d'un cluster)
+WASTE_TYPE_SEVERITY = {
+    "green": 1,
+    "household": 2,
+    "bulky": 3,
+    "building": 4,
+    "chemical": 5,
+    "asbestos": 6,
+}
+
+
+class ReportCluster(models.Model):
+    """
+    Regroupement automatique de signalements proches (≤10m).
+
+    Quand plusieurs personnes signalent le même dépôt, l'imprécision GPS
+    crée des points distincts. Ce modèle les regroupe avec un centroïde unique.
+    """
+
+    centroid = models.PointField(
+        verbose_name="Centroïde",
+        help_text="Centre géométrique du cluster",
+        srid=4326,
+        geography=True,
+    )
+
+    report_count = models.PositiveIntegerField(
+        default=0, verbose_name="Nombre de signalements"
+    )
+
+    max_waste_type = models.CharField(
+        max_length=20,
+        choices=[
+            ("green", "Déchets verts"),
+            ("household", "Déchets ménagers"),
+            ("bulky", "Encombrants"),
+            ("building", "Construction"),
+            ("chemical", "Déchets chimiques"),
+            ("asbestos", "Amiante"),
+        ],
+        default="green",
+        verbose_name="Catégorie dominante",
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True, verbose_name="Date de création"
+    )
+
+    updated_at = models.DateTimeField(
+        auto_now=True, verbose_name="Dernière modification"
+    )
+
+    class Meta:
+        verbose_name = "Cluster"
+        verbose_name_plural = "Clusters"
+        ordering = ["-report_count"]
+
+    def __str__(self):
+        return f"Cluster #{self.id} ({self.report_count} signalement(s))"
+
+    def recalculate_centroid(self):
+        """Recalcule le centroïde via moyenne arithmétique des coordonnées.
+        ST_Collect ne supporte pas le type geography — on calcule en Python.
+        Pour des clusters à ≤10m, la moyenne arithmétique est une très bonne approximation."""
+        from django.contrib.gis.geos import Point
+
+        points = list(self.reports.values_list("location", flat=True))
+        if points:
+            avg_lon = sum(p.x for p in points) / len(points)
+            avg_lat = sum(p.y for p in points) / len(points)
+            self.centroid = Point(avg_lon, avg_lat, srid=4326)
+
+    def recalculate_max_waste_type(self):
+        """Détermine la catégorie de déchets dominante parmi les signalements."""
+        types = self.reports.values_list("type", flat=True)
+        if types:
+            self.max_waste_type = max(
+                types, key=lambda w: WASTE_TYPE_SEVERITY.get(w, 0)
+            )
+        else:
+            self.max_waste_type = "green"
+
+    def recalculate(self):
+        """Recalcule toutes les métadonnées du cluster."""
+        self.report_count = self.reports.count()
+        self.recalculate_centroid()
+        self.recalculate_max_waste_type()
+        self.save()
+
+
 class Report(models.Model):
     """
     Modèle représentant un signalement de dépôt sauvage.
@@ -31,54 +121,62 @@ class Report(models.Model):
     Chaque signalement contient :
     - Une image du dépôt
     - Une description textuelle
-    - Un niveau de dangerosité
+    - Une catégorie de déchets
     - Une localisation GPS (PointField)
     - Un statut (en attente, validé, rejeté)
     """
 
-
-
     # Statuts possibles d'un signalement
     class Status(models.TextChoices):
-        PENDING = 'pending', 'En attente'       # Nouveau signalement
-        VALIDATED = 'validated', 'Validé'       # Confirmé par un admin
-        REJECTED = 'rejected', 'Rejeté'         # Faux signalement
+        PENDING = "pending", "En attente"  # Nouveau signalement
+        VALIDATED = "validated", "Validé"  # Confirmé par un admin
+        REJECTED = "rejected", "Rejeté"  # Faux signalement
 
-    # Niveaux de dangerosité (du moins au plus dangereux)
-    class DangerLevel(models.TextChoices):
-        GREEN = 'green', 'Déchets verts'            # Branches, tontes, feuilles
-        HOUSEHOLD = 'household', 'Déchets ménagers' # Sacs poubelles, ordures
-        BULKY = 'bulky', 'Encombrants'              # Meubles, électroménager
-        CHEMICAL = 'chemical', 'Déchets chimiques'  # Peintures, solvants, huiles
-        ASBESTOS = 'asbestos', 'Amiante'            # Très dangereux - protocole spécial
+    # Catégories de déchets
+    class WasteType(models.TextChoices):
+        GREEN = "green", "Déchets verts"  # Branches, tontes, feuilles
+        HOUSEHOLD = "household", "Déchets ménagers"  # Sacs poubelles, ordures
+        BULKY = "bulky", "Encombrants"  # Meubles, électroménager
+        BUILDING = "building", "Construction"  # Déchets de chantier
+        CHEMICAL = "chemical", "Déchets chimiques"  # Peintures, solvants, huiles
+        ASBESTOS = "asbestos", "Amiante"  # Très dangereux - protocole
 
+    # --- Cluster ---
+    cluster = models.ForeignKey(
+        ReportCluster,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="reports",
+        verbose_name="Cluster",
+        help_text="Cluster de signalements proches",
+    )
 
     # --- Informations du signalement ---
     image = models.ImageField(
-        upload_to='reports/',       # Dossier : media/reports/
-        verbose_name='Photo',
-        help_text='Photo du dépôt sauvage'
+        upload_to="reports/", verbose_name="Photo", help_text="Photo du dépôt sauvage"
     )
 
     description = models.TextField(
-        verbose_name='Description',
-        help_text='Décrivez le dépôt (type de déchets, quantité estimée...)'
+        verbose_name="Description",
+        help_text="Décrivez le dépôt (type de déchets, quantité estimée...)",
     )
 
-    danger_level = models.CharField(
+    type = models.CharField(
         max_length=20,
-        choices=DangerLevel.choices,
-        verbose_name='Niveau de dangerosité',
-        help_text='Type de déchets et danger associé'
+        choices=WasteType.choices,
+        verbose_name="Catégorie de déchets",
+        help_text="Type de déchets déposés",
     )
 
     # --- Localisation géospatiale ---
     # PointField stocke des coordonnées (longitude, latitude)
     # SRID 4326 = système de coordonnées WGS84 (standard GPS)
     location = models.PointField(
-        verbose_name='Localisation',
-        help_text='Position GPS du dépôt',
-        srid=4326  # Système de coordonnées WGS84 (standard mondial)
+        verbose_name="Localisation",
+        help_text="Position GPS du dépôt",
+        srid=4326,  # Système de coordonnées WGS84 (standard mondial)
+        geography=True,  # Active les calculs de distance en mètres réels
     )
 
     # --- Statut et dates ---
@@ -86,26 +184,21 @@ class Report(models.Model):
         max_length=20,
         choices=Status.choices,
         default=Status.PENDING,
-        verbose_name='Statut'
+        verbose_name="Statut",
     )
 
     created_at = models.DateTimeField(
-        auto_now_add=True,  # Rempli automatiquement à la création
-        verbose_name='Date de création'
+        auto_now_add=True, verbose_name="Date de création"
     )
 
     updated_at = models.DateTimeField(
-        auto_now=True,  # Mis à jour automatiquement à chaque sauvegarde
-        verbose_name='Dernière modification'
+        auto_now=True, verbose_name="Dernière modification"
     )
 
-    # =========================================================================
-    # MÉTADONNÉES DU MODÈLE
-    # =========================================================================
     class Meta:
-        verbose_name = 'Signalement'
-        verbose_name_plural = 'Signalements'
-        ordering = ['-created_at']  # Plus récents en premier
+        verbose_name = "Signalement"
+        verbose_name_plural = "Signalements"
+        ordering = ["-created_at"]
 
     def __str__(self):
         """Représentation textuelle (affichée dans l'admin)."""

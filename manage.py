@@ -10,6 +10,7 @@ Commandes courantes :
     createsuperuser → Créer un administrateur
     shell           → Console Python avec contexte Django
 """
+
 import os
 import sys
 
@@ -17,7 +18,7 @@ import sys
 def main():
     # Indique à Django quel fichier de configuration utiliser
     # Pointe vers dump_alert/settings.py
-    os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dump_alert.settings')
+    os.environ.setdefault("DJANGO_SETTINGS_MODULE", "dump_alert.settings")
 
     # Importe le gestionnaire de commandes Django
     from django.core.management import execute_from_command_line
@@ -28,5 +29,5 @@ def main():
 
 # Ce bloc s'exécute uniquement si on lance directement ce fichier
 # (pas si on l'importe comme module)
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
