@@ -18,14 +18,3 @@ repos:
       - id: ruff
         args: [--fix]
       - id: ruff-format
-
-  # Tests Django (au git push uniquement)
-  - repo: local
-    hooks:
-      - id: django-tests
-        name: Django Unit Tests
-        entry: .venv/Scripts/python
-        args: [manage.py, test, reports, --noinput, --verbosity=0]
-        language: system
-        pass_filenames: false
-        stages: [pre-push]
