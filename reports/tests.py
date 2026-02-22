@@ -76,47 +76,21 @@ class ReportClusterMethodsTest(TestCase):
         Report.objects.filter(pk__in=[r1.pk, r2.pk]).update(cluster=self.cluster)
 
     def test_centroid_is_arithmetic_mean(self):
+        # Le centroïde doit être la moyenne des coordonnées des 2 reports
+        # r1 = (2.082, 49.430), r2 = (2.083, 49.431) → centre = (2.0825, 49.4305)
         self.cluster.recalculate_centroid()
         self.assertAlmostEqual(self.cluster.centroid.x, (2.082 + 2.083) / 2, places=5)
         self.assertAlmostEqual(self.cluster.centroid.y, (49.430 + 49.431) / 2, places=5)
 
     def test_waste_type_matches_reports(self):
+        # Le type du cluster doit refléter le type des reports qu'il contient
         self.cluster.recalculate_waste_type()
         self.assertEqual(self.cluster.waste_type, "household")
 
     def test_recalculate_updates_report_count(self):
+        # recalculate() recompte les reports rattachés — doit trouver 2
         self.cluster.recalculate()
         self.assertEqual(self.cluster.report_count, 2)
-
-
-# =============================================================================
-# SERVICE : merge_clusters
-# =============================================================================
-
-
-class MergeClustersTest(TestCase):
-    """
-    merge_clusters([c1, c2, ...]) doit :
-    - Garder le cluster le plus ancien comme cluster principal
-    - Rattacher tous les signalements au cluster principal
-    - Supprimer les clusters secondaires
-    """
-
-    def setUp(self):
-        self.c1 = ReportCluster.objects.create(
-            centroid=Point(2.082, 49.430, srid=4326),
-            report_count=1,
-            waste_type="household",
-        )
-        self.c2 = ReportCluster.objects.create(
-            centroid=Point(2.082, 49.430, srid=4326),
-            report_count=1,
-            waste_type="household",
-        )
-        r1 = make_report(waste_type="household")
-        r2 = make_report(waste_type="household")
-        Report.objects.filter(pk=r1.pk).update(cluster=self.c1)
-        Report.objects.filter(pk=r2.pk).update(cluster=self.c2)
 
 
 # =============================================================================
@@ -128,10 +102,13 @@ class AssignReportToClusterTest(TestCase):
     """Le signal post_save appelle assign_report_to_cluster après chaque Report.save()."""
 
     def test_first_report_creates_one_cluster(self):
+        # Aucun cluster n'existe → le signal doit en créer un automatiquement
         make_report(lat=49.430, lon=2.082)
         self.assertEqual(ReportCluster.objects.count(), 1)
 
     def test_nearby_report_joins_existing_cluster(self):
+        # Deux reports à ~1m l'un de l'autre (même type) → même cluster
+        # On vérifie qu'un seul cluster existe et que les deux y sont rattachés
         r1 = make_report(lat=49.43000, lon=2.08200)
         r2 = make_report(lat=49.43001, lon=2.08201)  # ~1m de distance
         self.assertEqual(ReportCluster.objects.count(), 1)
@@ -140,6 +117,7 @@ class AssignReportToClusterTest(TestCase):
         self.assertEqual(c1, c2)
 
     def test_far_report_creates_new_cluster(self):
+        # Deux reports à ~8km l'un de l'autre → deux clusters distincts
         make_report(lat=49.430, lon=2.082)
         make_report(lat=49.500, lon=2.100)  # ~8 km
         self.assertEqual(ReportCluster.objects.count(), 2)
@@ -173,34 +151,45 @@ class CreateReportViewTest(TestCase):
         )
 
     def test_anonymous_redirects_to_login(self):
+        # Un visiteur non connecté doit être redirigé vers la page de login
+        # Django ajoute ?next= pour revenir au formulaire après connexion
         response = self.client.get(self.url)
         self.assertRedirects(response, f"/accounts/login/?next={self.url}")
 
     def test_get_returns_200(self):
+        # Un utilisateur connecté doit pouvoir afficher le formulaire (GET)
         self.client.login(username="testuser", password="pass")
         self.assertEqual(self.client.get(self.url).status_code, 200)
 
     def test_missing_location_shows_error(self):
+        # Si lat/lon sont vides (pas de clic sur la carte), la vue doit
+        # renvoyer le formulaire avec un message d'erreur visible
         self.client.login(username="testuser", password="pass")
         response = self._post(lat="", lon="")
         self.assertContains(response, "localisation")
 
     def test_outside_beauvais_shows_error(self):
+        # Les coordonnées de Paris sont hors de la bbox de Beauvais → erreur
         self.client.login(username="testuser", password="pass")
         response = self._post(lat="48.8566", lon="2.3522")  # Paris
         self.assertContains(response, "hors zone")
 
     def test_invalid_float_shows_error(self):
+        # Des valeurs non numériques dans lat/lon ne doivent pas lever une 500
+        # mais afficher un message d'erreur dans le formulaire
         self.client.login(username="testuser", password="pass")
         response = self._post(lat="abc", lon="xyz")
         self.assertContains(response, "coordonn")
 
     def test_valid_post_redirects_to_success(self):
+        # Une soumission valide doit rediriger vers la page de confirmation
         self.client.login(username="testuser", password="pass")
         response = self._post()
         self.assertRedirects(response, reverse("reports:success"))
 
     def test_valid_post_creates_report_in_db(self):
+        # Après une soumission valide, un Report doit exister en BDD
+        # On vérifie aussi que la latitude a bien été stockée dans le PointField
         self.client.login(username="testuser", password="pass")
         self._post()
         self.assertEqual(Report.objects.count(), 1)
@@ -220,19 +209,25 @@ class ReportListViewTest(TestCase):
         User.objects.create_user("admin", password="pass", is_staff=True)
 
     def test_non_staff_cannot_access(self):
+        # Un utilisateur normal (is_staff=False) ne doit pas voir la liste admin
+        # @staff_member_required retourne 302 (redirect) ou 403
         self.client.login(username="regular", password="pass")
         self.assertNotEqual(self.client.get(self.url).status_code, 200)
 
     def test_staff_can_access(self):
+        # Un utilisateur staff (is_staff=True) doit pouvoir accéder à la liste
         self.client.login(username="admin", password="pass")
         self.assertEqual(self.client.get(self.url).status_code, 200)
 
     def test_filter_by_status(self):
+        # Le paramètre GET ?status= ne doit pas provoquer d'erreur 500
+        # (vérifie que le filtrage SQL fonctionne même sans données)
         self.client.login(username="admin", password="pass")
         response = self.client.get(self.url, {"status": "pending"})
         self.assertEqual(response.status_code, 200)
 
     def test_filter_by_type(self):
+        # Le paramètre GET ?type= ne doit pas provoquer d'erreur 500
         self.client.login(username="admin", password="pass")
         response = self.client.get(self.url, {"type": "household"})
         self.assertEqual(response.status_code, 200)
