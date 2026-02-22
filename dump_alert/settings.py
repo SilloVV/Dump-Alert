@@ -23,13 +23,16 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # =============================================================================
 # GDAL/GEOS/PROJ - Bibliothèques géospatiales (via QGIS)
 # =============================================================================
-# QGIS inclut ces bibliothèques, on les réutilise pour GeoDjango
-QGIS_PATH = r"C:\Program Files\QGIS 3.40.15"
-os.environ["PATH"] = os.path.join(QGIS_PATH, "bin") + ";" + os.environ.get("PATH", "")
-os.environ["PROJ_LIB"] = os.path.join(QGIS_PATH, "share", "proj")
-
-GDAL_LIBRARY_PATH = os.path.join(QGIS_PATH, "bin", "gdal312.dll")
-GEOS_LIBRARY_PATH = os.path.join(QGIS_PATH, "bin", "geos_c.dll")
+# Sur Windows : QGIS fournit les bibliothèques, on précise les chemins.
+# Sur Linux (CI/prod) : GDAL/GEOS sont installés via apt, Django les trouve seul.
+if os.name == "nt":
+    QGIS_PATH = r"C:\Program Files\QGIS 3.40.15"
+    os.environ["PATH"] = (
+        os.path.join(QGIS_PATH, "bin") + ";" + os.environ.get("PATH", "")
+    )
+    os.environ["PROJ_LIB"] = os.path.join(QGIS_PATH, "share", "proj")
+    GDAL_LIBRARY_PATH = os.path.join(QGIS_PATH, "bin", "gdal312.dll")
+    GEOS_LIBRARY_PATH = os.path.join(QGIS_PATH, "bin", "geos_c.dll")
 
 
 # =============================================================================
